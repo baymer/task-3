@@ -1,6 +1,11 @@
 (function () {
-    var video = document.querySelector('.camera__video'),
-        canvas = document.querySelector('.camera__canvas');
+debugger
+    var video = document.querySelector('.camera__video');
+    var canvas = document.querySelector('.camera__canvas');
+    var ctx = canvas.getContext('2d');
+
+    var width;
+    var height;
 
     var getVideoStream = function (callback) {
         navigator.getUserMedia = navigator.getUserMedia ||
@@ -26,64 +31,63 @@
         }
     };
 
-    var applyFilterToPixel = function (pixel) {
-        var filters = {
-            invert: function (pixel) {
-                pixel[0] = 255 - pixel[0];
-                pixel[1] = 255 - pixel[1];
-                pixel[2] = 255 - pixel[2];
+    var filters = {
+        invert: function (pixel, i) {
+            pixel[i] = 255 - pixel[i];
+            pixel[i + 1] = 255 - pixel[i + 1];
+            pixel[i + 2] = 255 - pixel[i + 2];
+        },
+        grayscale: function (pixel, i) {
+            var r = pixel[i];
+            var g = pixel[i + 1];
+            var b = pixel[i + 2];
+            var v = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
-                return pixel;
-            },
-            grayscale: function (pixel) {
-                var r = pixel[0];
-                var g = pixel[1];
-                var b = pixel[2];
-                var v = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            pixel[i] = pixel[i + 1] = pixel[i + 2] = v;
 
-                pixel[0] = pixel[1] = pixel[2] = v;
+            return pixel;
+        },
+        threshold: function (pixel, i) {
+            var r = pixel[i];
+            var g = pixel[i + 1];
+            var b = pixel[i + 2];
+            var v = (0.2126 * r + 0.7152 * g + 0.0722 * b >= 128) ? 255 : 0;
+            pixel[i] = pixel[i + 1] = pixel[i + 2] = v;
 
-                return pixel;
-            },
-            threshold: function (pixel) {
-                var r = pixel[0];
-                var g = pixel[1];
-                var b = pixel[2];
-                var v = (0.2126 * r + 0.7152 * g + 0.0722 * b >= 128) ? 255 : 0;
-                pixel[0] = pixel[1] = pixel[2] = v;
-
-                return pixel;
-            }
-        };
-
-        var filterName = document.querySelector('.controls__filter').value;
-
-        return filters[filterName](pixel);
-    };
-
-    var applyFilter = function () {
-        for (var x = 0; x < canvas.width; x++) {
-            for (var y = 0; y < canvas.height; y++) {
-                var pixel = canvas.getContext('2d').getImageData(x, y, 1, 1);
-
-                pixel.data = applyFilterToPixel(pixel.data);
-
-                canvas.getContext('2d').putImageData(pixel, x, y);
-            }
+            return pixel;
         }
     };
 
-    var captureFrame = function () {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        applyFilter();
+    var applyFilterToPixel = function (pixel, filterName, i) {
+        filters[filterName](pixel, i);
     };
 
-    getVideoStream(function () {
-        captureFrame();
+    var applyFilter = function () {
+        var filterName = document.querySelector('.controls__filter').value;
+        var imageData = ctx.getImageData(0, 0, width, height);
+        var data = imageData.data;
+        var length = data.length;
+        var pixel;
 
-        setInterval(captureFrame, 16);
+        // if (filterName === prevFilter) { return; }
+
+        // prevFilter = filterName;
+
+        for(var y = 0; y < height; y++) {
+            for(var x = 0; x < width; x++) {
+                applyFilterToPixel(data, filterName, ((width * y) + x) * 4);
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+    };
+
+    getVideoStream(function captureFrame() {
+        width = canvas.width = video.videoWidth;
+        height = canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+
+        applyFilter();
+        setTimeout(captureFrame, 16);
     });
 })();
