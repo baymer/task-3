@@ -1,5 +1,5 @@
-(function () {
-debugger
+(function() {
+    var controlFilter = document.querySelector('.controls__filter');
     var video = document.querySelector('.camera__video');
     var canvas = document.querySelector('.camera__canvas');
     var ctx = canvas.getContext('2d');
@@ -7,7 +7,7 @@ debugger
     var width;
     var height;
 
-    var getVideoStream = function (callback) {
+    var getVideoStream = function(callback) {
         navigator.getUserMedia = navigator.getUserMedia ||
             navigator.webkitGetUserMedia ||
             navigator.mozGetUserMedia;
@@ -38,56 +38,52 @@ debugger
             pixel[i + 2] = 255 - pixel[i + 2];
         },
         grayscale: function (pixel, i) {
-            var r = pixel[i];
-            var g = pixel[i + 1];
-            var b = pixel[i + 2];
-            var v = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-
+            var v = 0.2126 * pixel[i] + 0.7152 * pixel[i + 1] + 0.0722 * pixel[i + 2];
             pixel[i] = pixel[i + 1] = pixel[i + 2] = v;
-
-            return pixel;
         },
         threshold: function (pixel, i) {
-            var r = pixel[i];
-            var g = pixel[i + 1];
-            var b = pixel[i + 2];
-            var v = (0.2126 * r + 0.7152 * g + 0.0722 * b >= 128) ? 255 : 0;
+            var v = (0.2126 * pixel[i] + 0.7152 * pixel[i + 1] + 0.0722 * pixel[i + 2] >= 128) ? 255 : 0;
             pixel[i] = pixel[i + 1] = pixel[i + 2] = v;
-
-            return pixel;
+        },
+        scale: function (pixel, i) {
+            pixel[i] = 255 % pixel[i];
+            pixel[i + 1] = 255 % pixel[i + 1];
+            pixel[i + 2] = 255 % pixel[i + 2];
         }
     };
 
-    var applyFilterToPixel = function (pixel, filterName, i) {
-        filters[filterName](pixel, i);
-    };
-
-    var applyFilter = function () {
-        var filterName = document.querySelector('.controls__filter').value;
+    var applyFilter = function() {
+        var filterName = controlFilter.value;
         var imageData = ctx.getImageData(0, 0, width, height);
         var data = imageData.data;
         var length = data.length;
         var pixel;
 
-        // if (filterName === prevFilter) { return; }
+        if (!filters[filterName]) {
+            console.log("Filter ", filterName, " not supported");
+            return false;
+        }
 
-        // prevFilter = filterName;
-
-        for(var y = 0; y < height; y++) {
-            for(var x = 0; x < width; x++) {
-                applyFilterToPixel(data, filterName, ((width * y) + x) * 4);
-            }
+        for(var i = 0; i < length; i += 4) {
+            filters[filterName](pixel, i);
         }
 
         ctx.putImageData(imageData, 0, 0);
+
+        return true;
     };
 
-    getVideoStream(function captureFrame() {
-        width = canvas.width = video.videoWidth;
-        height = canvas.height = video.videoHeight;
+    var captureFrame = window.captureFrame = function() {
         ctx.drawImage(video, 0, 0);
 
-        applyFilter();
+        applyFilter() &&
         setTimeout(captureFrame, 16);
+    };
+
+    getVideoStream(function() {
+        width = canvas.width = video.videoWidth;
+        height = canvas.height = video.videoHeight;
+
+        captureFrame();
     });
 })();

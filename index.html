@@ -13,10 +13,11 @@
             <video autoplay class="camera__video"></video>
         </div>
         <div class="controls">
-            <select class="controls__filter">
+            <select class="controls__filter" onchange="captureFrame()">
                 <option value="invert" selected="selected">Инвертировать</option>
                 <option value="grayscale">Оттенки серого</option>
                 <option value="threshold">Черно-белый</option>
+                <option value="scale">XZ</option>
             </select>
         </div>
     </div>
